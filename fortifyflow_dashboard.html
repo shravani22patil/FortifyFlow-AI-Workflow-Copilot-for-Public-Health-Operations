@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FortifyFlow — AI Workflow Copilot</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f5f5f3;
+    --color-background-tertiary: #eeede8;
+    --color-text-primary: #1a1a18;
+    --color-text-secondary: #5f5e5a;
+    --color-text-tertiary: #9a9892;
+    --color-border-tertiary: rgba(0,0,0,0.10);
+    --color-border-secondary: rgba(0,0,0,0.18);
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background-primary: #1e1e1c;
+      --color-background-secondary: #2a2a28;
+      --color-background-tertiary: #141412;
+      --color-text-primary: #f0ede8;
+      --color-text-secondary: #a8a59e;
+      --color-text-tertiary: #6e6b65;
+      --color-border-tertiary: rgba(255,255,255,0.08);
+      --color-border-secondary: rgba(255,255,255,0.15);
+    }
+  }
+
+  body { font-family: var(--font-sans); background: var(--color-background-tertiary); color: var(--color-text-primary); height: 100vh; overflow: hidden; }
+
+  .app { display: flex; height: 100vh; }
+
+  .sidebar {
+    width: 220px; flex-shrink: 0;
+    background: var(--color-background-primary);
+    border-right: 0.5px solid var(--color-border-tertiary);
+    display: flex; flex-direction: column;
+  }
+  .sidebar-logo { padding: 20px 18px 16px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .logo-mark { display: flex; align-items: center; gap: 8px; }
+  .logo-icon { width: 28px; height: 28px; border-radius: 6px; background: #1D9E75; display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { width: 16px; height: 16px; }
+  .logo-text { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
+  .logo-sub { font-size: 11px; color: var(--color-text-tertiary); margin-top: 1px; }
+
+  .nav { padding: 12px 10px; flex: 1; }
+  .nav-section { margin-bottom: 20px; }
+  .nav-label { font-size: 10px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; padding: 0 8px; margin-bottom: 4px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px; border-radius: var(--border-radius-md);
+    font-size: 13px; color: var(--color-text-secondary);
+    cursor: pointer; border: none; background: none; width: 100%; text-align: left;
+    transition: all 0.15s; margin-bottom: 1px;
+  }
+  .nav-item:hover { background: var(--color-background-secondary); color: var(--color-text-primary); }
+  .nav-item.active { background: #E1F5EE; color: #0F6E56; font-weight: 500; }
+  .nav-badge { margin-left: auto; font-size: 10px; padding: 1px 6px; border-radius: 10px; background: #FCEBEB; color: #A32D2D; font-weight: 500; }
+  .sidebar-footer { padding: 12px 14px; border-top: 0.5px solid var(--color-border-tertiary); font-size: 11px; color: var(--color-text-tertiary); }
+  .status-dot { color: #1D9E75; }
+
+  .main { flex: 1; overflow: auto; display: flex; flex-direction: column; }
+  .topbar { background: var(--color-background-primary); border-bottom: 0.5px solid var(--color-border-tertiary); padding: 12px 24px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .topbar-title { font-size: 15px; font-weight: 500; color: var(--color-text-primary); flex: 1; }
+  .topbar-sub { font-size: 12px; color: var(--color-text-tertiary); }
+  .btn { padding: 6px 14px; border-radius: var(--border-radius-md); font-size: 12px; font-weight: 500; cursor: pointer; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); transition: all 0.15s; }
+  .btn:hover { background: var(--color-background-secondary); }
+  .btn-primary { background: #1D9E75; color: white; border-color: #1D9E75; }
+  .btn-primary:hover { background: #0F6E56; border-color: #0F6E56; }
+
+  .content { padding: 20px 24px; flex: 1; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 20px; }
+  .metric-card { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 14px 16px; }
+  .metric-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 6px; }
+  .metric-val { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+  .metric-delta { font-size: 11px; color: var(--color-text-secondary); margin-top: 3px; }
+  .metric-delta.up { color: #0F6E56; }
+  .metric-delta.down { color: #993C1D; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; margin-bottom: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-bottom: 16px; }
+  .span2 { grid-column: span 2; }
+
+  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 16px; }
+  .card-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 12px; }
+  .card-sub { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 12px; margin-top: -8px; }
+
+  .alert-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--color-border-tertiary); align-items: flex-start; }
+  .alert-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .alert-dot.red { background: #E24B4A; }
+  .alert-dot.amber { background: #EF9F27; }
+  .alert-dot.green { background: #639922; }
+  .alert-text { font-size: 12px; color: var(--color-text-primary); line-height: 1.5; }
+  .alert-meta { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
+
+  .doc-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 0.5px solid var(--color-border-tertiary); cursor: pointer; }
+  .doc-item:last-child { border-bottom: none; }
+  .doc-icon { width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+  .doc-icon.pdf { background: #FAECE7; color: #993C1D; }
+  .doc-icon.csv { background: #EAF3DE; color: #3B6D11; }
+  .doc-icon.docx { background: #E6F1FB; color: #185FA5; }
+  .doc-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
+  .doc-date { font-size: 11px; color: var(--color-text-tertiary); }
+  .doc-badge { margin-left: auto; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; flex-shrink: 0; }
+  .doc-badge.processed { background: #E1F5EE; color: #0F6E56; }
+  .doc-badge.pending { background: #FAEEDA; color: #854F0B; }
+  .doc-badge.error { background: #FCEBEB; color: #A32D2D; }
+
+  .tag { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin: 2px; font-weight: 500; }
+  .tag.risk { background: #FCEBEB; color: #A32D2D; }
+  .tag.action { background: #E1F5EE; color: #0F6E56; }
+  .tag.deadline { background: #FAEEDA; color: #854F0B; }
+  .tag.stakeholder { background: #E6F1FB; color: #185FA5; }
+
+  .check-item { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; }
+  .check-box { width: 16px; height: 16px; border-radius: 4px; border: 0.5px solid var(--color-border-secondary); flex-shrink: 0; margin-top: 2px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; background: var(--color-background-primary); transition: all 0.15s; }
+  .check-box.done { background: #1D9E75; border-color: #1D9E75; color: white; }
+  .check-text { font-size: 12px; color: var(--color-text-primary); line-height: 1.5; }
+  .check-text.done { text-decoration: line-through; color: var(--color-text-tertiary); }
+
+  .upload-zone { border: 1.5px dashed var(--color-border-secondary); border-radius: var(--border-radius-lg); padding: 40px 24px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 20px; }
+  .upload-zone:hover { border-color: #1D9E75; background: rgba(29,158,117,0.04); }
+  .upload-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+  .upload-sub { font-size: 12px; color: var(--color-text-tertiary); }
+
+  .tab-row { display: flex; gap: 2px; margin-bottom: 16px; }
+  .tab { padding: 6px 14px; border-radius: var(--border-radius-md); font-size: 12px; font-weight: 500; cursor: pointer; color: var(--color-text-secondary); border: none; background: none; transition: all 0.15s; }
+  .tab:hover { background: var(--color-background-secondary); color: var(--color-text-primary); }
+  .tab.active { background: var(--color-background-secondary); color: var(--color-text-primary); }
+
+  .insight-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 14px 16px; margin-bottom: 12px; }
+  .insight-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .insight-icon { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .insight-icon.warn { background: #FAEEDA; }
+  .insight-icon.ok { background: #E1F5EE; }
+  .insight-icon.info { background: #E6F1FB; }
+  .insight-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+  .insight-body { font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; }
+
+  .anomaly-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .anomaly-row:last-child { border-bottom: none; }
+  .anomaly-region { font-size: 12px; font-weight: 500; color: var(--color-text-primary); width: 90px; flex-shrink: 0; }
+  .anomaly-bar-wrap { flex: 1; background: var(--color-background-secondary); border-radius: 4px; height: 6px; }
+  .anomaly-bar { height: 6px; border-radius: 4px; }
+  .anomaly-val { font-size: 11px; color: var(--color-text-secondary); width: 40px; text-align: right; flex-shrink: 0; }
+  .anomaly-flag { font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 500; flex-shrink: 0; }
+  .anomaly-flag.red { background: #FCEBEB; color: #A32D2D; }
+  .anomaly-flag.amber { background: #FAEEDA; color: #854F0B; }
+  .anomaly-flag.ok { background: #E1F5EE; color: #3B6D11; }
+
+  .report-section { margin-bottom: 16px; }
+  .report-label { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .report-chip { display: inline-flex; align-items: center; gap: 6px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 6px 12px; font-size: 12px; cursor: pointer; margin: 4px; transition: all 0.15s; background: var(--color-background-primary); color: var(--color-text-primary); }
+  .report-chip:hover { background: var(--color-background-secondary); }
+  .report-chip.sel { border-color: #1D9E75; background: #E1F5EE; color: #0F6E56; }
+
+  .ai-box { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 14px 16px; margin-top: 12px; }
+  .ai-label { font-size: 10px; font-weight: 500; color: #0F6E56; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .ai-text { font-size: 12px; color: var(--color-text-secondary); line-height: 1.7; }
+
+  .sop-step { display: flex; gap: 12px; margin-bottom: 14px; }
+  .sop-num { width: 24px; height: 24px; border-radius: 50%; background: #1D9E75; color: white; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sop-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 3px; }
+  .sop-detail { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+
+  .progress-bar { height: 4px; border-radius: 2px; background: var(--color-background-secondary); margin-top: 8px; }
+  .progress-fill { height: 4px; border-radius: 2px; }
+
+  .spinner { width: 14px; height: 14px; border: 2px solid #E1F5EE; border-top-color: #1D9E75; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  textarea { width: 100%; min-height: 80px; font-size: 12px; color: var(--color-text-primary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 10px 12px; background: var(--color-background-primary); resize: vertical; font-family: var(--font-sans); line-height: 1.5; }
+  input[type="text"] { font-size: 13px; color: var(--color-text-primary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 8px 12px; background: var(--color-background-primary); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <div class="logo-icon">
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 8h10M8 3v10M5 5l6 6M11 5l-6 6" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">FortifyFlow</div>
+          <div class="logo-sub">AI Workflow Copilot</div>
+        </div>
+      </div>
+    </div>
+    <div class="nav">
+      <div class="nav-section">
+        <div class="nav-label">Workspace</div>
+        <button class="nav-item active" onclick="nav('dashboard', this)">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+          Overview
+        </button>
+        <button class="nav-item" onclick="nav('documents', this)">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M10 2v4h4"/></svg>
+          Document Intelligence
+          <span class="nav-badge">3</span>
+        </button>
+        <button class="nav-item" onclick="nav('monitoring', this)">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2,12 6,7 9,9 14,3"/></svg>
+          Monitoring Analytics
+        </button>
+        <button class="nav-item" onclick="nav('manuals', this)">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="11" y2="9"/><line x1="5" y1="12" x2="9" y2="12"/></svg>
+          Manual Generator
+        </button>
+        <button class="nav-item" onclick="nav('reporting', this)">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1.5"/><polyline points="5,10 8,6 11,10"/></svg>
+          Reporting Assistant
+        </button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <button class="nav-item" onclick="nav('search', this)">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
+          Semantic Search
+        </button>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      Fortify Health · Internal Tool<br>
+      <span class="status-dot">● AI services online</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="page-title">Overview</div>
+        <div class="topbar-sub" id="page-sub">March 2025 — Maharashtra &amp; UP Regions</div>
+      </div>
+      <button class="btn" onclick="nav('documents', document.querySelectorAll('.nav-item')[1])">+ Upload file</button>
+      <button class="btn btn-primary">Generate report</button>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="metrics">
+          <div class="metric-card"><div class="metric-label">Documents processed</div><div class="metric-val">47</div><div class="metric-delta up">↑ 12 this week</div></div>
+          <div class="metric-card"><div class="metric-label">Monitoring CSVs analyzed</div><div class="metric-val">18</div><div class="metric-delta up">↑ 4 new</div></div>
+          <div class="metric-card"><div class="metric-label">Open action items</div><div class="metric-val">23</div><div class="metric-delta down">↓ 6 overdue</div></div>
+          <div class="metric-card"><div class="metric-label">Reports generated</div><div class="metric-val">11</div><div class="metric-delta up">↑ 2 this week</div></div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">Fortification compliance by region</div>
+            <div style="position:relative;width:100%;height:180px;"><canvas id="compChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Red flags &amp; alerts</div>
+            <div class="alert-item"><div class="alert-dot red"></div><div><div class="alert-text">Iron premix stock critically low in Nashik district — 3 days remaining</div><div class="alert-meta">Auto-detected · Monitoring CSV · 2h ago</div></div></div>
+            <div class="alert-item"><div class="alert-dot amber"></div><div><div class="alert-text">SOP compliance rate dropped 8% in UP region (Q1 vs Q2)</div><div class="alert-meta">Anomaly detected · Monitoring data · 5h ago</div></div></div>
+            <div class="alert-item"><div class="alert-dot amber"></div><div><div class="alert-text">3 action items from National Food Fortification Policy due this week</div><div class="alert-meta">Document Intelligence · Policy-2025.pdf</div></div></div>
+            <div class="alert-item"><div class="alert-dot green"></div><div><div class="alert-text">Madhya Pradesh reached 94% fortification coverage target</div><div class="alert-meta">Auto-tagged · Monitoring CSV · 1d ago</div></div></div>
+          </div>
+        </div>
+        <div class="grid3">
+          <div class="card span2">
+            <div class="card-title">Recent documents</div>
+            <div class="doc-item"><div class="doc-icon pdf">PDF</div><div><div class="doc-name">National Food Fortification Policy 2025</div><div class="doc-date">Uploaded Mar 12 · 48 pages</div></div><span class="doc-badge processed">Analyzed</span></div>
+            <div class="doc-item"><div class="doc-icon csv">CSV</div><div><div class="doc-name">Q1-monitoring-maharashtra.csv</div><div class="doc-date">Uploaded Mar 14 · 3,210 rows</div></div><span class="doc-badge processed">Processed</span></div>
+            <div class="doc-item"><div class="doc-icon docx">DOC</div><div><div class="doc-name">Premix Supplier SOP v3.docx</div><div class="doc-date">Uploaded Mar 15 · 22 pages</div></div><span class="doc-badge pending">Processing…</span></div>
+            <div class="doc-item"><div class="doc-icon csv">CSV</div><div><div class="doc-name">UP-district-audit-Feb25.csv</div><div class="doc-date">Uploaded Mar 10 · 1,540 rows</div></div><span class="doc-badge error">Needs review</span></div>
+          </div>
+          <div class="card">
+            <div class="card-title">AI processing queue</div>
+            <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:12px;line-height:1.5;">1 document currently processing</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:8px;">
+              <div class="spinner"></div>
+              <div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary);">Premix Supplier SOP v3</div><div style="font-size:10px;color:var(--color-text-tertiary);">Extracting actions &amp; risks…</div></div>
+            </div>
+            <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:12px;">Queue: 0 pending · 47 complete</div>
+            <div class="progress-bar" style="margin-top:6px;"><div class="progress-fill" style="width:65%;background:#1D9E75;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCUMENTS -->
+      <div class="page" id="page-documents">
+        <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+          <input type="file" id="file-input" accept=".pdf,.docx,.csv" style="display:none">
+          <div style="font-size:28px;margin-bottom:10px;">📄</div>
+          <div class="upload-title">Drop files here or click to upload</div>
+          <div class="upload-sub">PDF, DOCX, CSV — max 50MB per file</div>
+        </div>
+        <div class="tab-row">
+          <button class="tab active" onclick="switchTab(this,'tab-analysis')">AI Analysis</button>
+          <button class="tab" onclick="switchTab(this,'tab-checklist')">Action Checklist</button>
+          <button class="tab" onclick="switchTab(this,'tab-raw')">All Documents</button>
+        </div>
+        <div id="tab-analysis">
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-title">National Food Fortification Policy 2025 — AI Analysis</div>
+            <div class="card-sub">48 pages · Uploaded Mar 12 · Analyzed in 34s</div>
+            <div style="margin-bottom:10px;">
+              <span class="tag risk">Risk: Supply chain dependency</span>
+              <span class="tag risk">Risk: Lab capacity gap</span>
+              <span class="tag action">Action: Compliance audit Q2</span>
+              <span class="tag action">Action: Update SOP</span>
+              <span class="tag deadline">Deadline: Jun 30, 2025</span>
+              <span class="tag stakeholder">FSSAI</span>
+              <span class="tag stakeholder">State DHS</span>
+            </div>
+            <div class="ai-box">
+              <div class="ai-label">AI Summary</div>
+              <div class="ai-text">This policy mandates fortification of wheat flour, rice, and edible oil across all licensed mills by June 30, 2025. Key obligations include quarterly compliance audits by State Food Safety Officers, mandatory premix procurement from FSSAI-approved suppliers, and maintenance of batch-wise fortification records. Two critical risks identified: (1) premix supply is concentrated in 3 vendors with no redundancy clause, and (2) district-level testing labs lack ISO certification — non-compliance with Annexure 4 testing protocols could trigger license suspension.</div>
+            </div>
+          </div>
+        </div>
+        <div id="tab-checklist" style="display:none">
+          <div class="card">
+            <div class="card-title">Generated action items — Policy 2025</div>
+            <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><div class="check-text">Schedule Q2 compliance audit with State Food Safety Officers — due Apr 15</div></div>
+            <div class="check-item"><div class="check-box done" onclick="toggleCheck(this)">✓</div><div class="check-text done">Register all wheat flour mills in FSSAI fortification portal</div></div>
+            <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><div class="check-text">Identify backup premix suppliers (Annexure 2 compliant) — due May 1</div></div>
+            <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><div class="check-text">Obtain ISO certification for 3 district labs — due Jun 30</div></div>
+            <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><div class="check-text">Update internal SOP to align with Annexure 4 testing protocols</div></div>
+            <div class="check-item"><div class="check-box" onclick="toggleCheck(this)"></div><div class="check-text">Train field officers on new batch-wise record format — due Apr 30</div></div>
+            <div style="margin-top:14px;"><button class="btn btn-primary">Export checklist</button></div>
+          </div>
+        </div>
+        <div id="tab-raw" style="display:none">
+          <div class="card">
+            <div class="card-title">All documents</div>
+            <div class="doc-item"><div class="doc-icon pdf">PDF</div><div><div class="doc-name">National Food Fortification Policy 2025</div><div class="doc-date">Mar 12 · 48 pages · 14 actions extracted</div></div><span class="doc-badge processed">Analyzed</span></div>
+            <div class="doc-item"><div class="doc-icon csv">CSV</div><div><div class="doc-name">Q1-monitoring-maharashtra.csv</div><div class="doc-date">Mar 14 · 3,210 rows · 3 anomalies</div></div><span class="doc-badge processed">Processed</span></div>
+            <div class="doc-item"><div class="doc-icon docx">DOC</div><div><div class="doc-name">Premix Supplier SOP v3.docx</div><div class="doc-date">Mar 15 · 22 pages</div></div><span class="doc-badge pending">Processing…</span></div>
+            <div class="doc-item"><div class="doc-icon csv">CSV</div><div><div class="doc-name">UP-district-audit-Feb25.csv</div><div class="doc-date">Mar 10 · 1,540 rows</div></div><span class="doc-badge error">Needs review</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MONITORING -->
+      <div class="page" id="page-monitoring">
+        <div class="metrics">
+          <div class="metric-card"><div class="metric-label">Rows analyzed</div><div class="metric-val">3,210</div><div class="metric-delta">Q1 Maharashtra</div></div>
+          <div class="metric-card"><div class="metric-label">Avg. compliance</div><div class="metric-val">78%</div><div class="metric-delta down">↓ 4% vs Q4</div></div>
+          <div class="metric-card"><div class="metric-label">Anomalies flagged</div><div class="metric-val">3</div><div class="metric-delta down">2 critical</div></div>
+          <div class="metric-card"><div class="metric-label">Districts covered</div><div class="metric-val">14</div><div class="metric-delta">of 36 total</div></div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">Compliance trend — Q1 2025</div>
+            <div style="position:relative;width:100%;height:180px;"><canvas id="trendChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Anomaly detection by district</div>
+            <div class="anomaly-row"><div class="anomaly-region">Nashik</div><div class="anomaly-bar-wrap"><div class="anomaly-bar" style="width:22%;background:#E24B4A;"></div></div><div class="anomaly-val">22%</div><div class="anomaly-flag red">Critical</div></div>
+            <div class="anomaly-row"><div class="anomaly-region">Aurangabad</div><div class="anomaly-bar-wrap"><div class="anomaly-bar" style="width:58%;background:#EF9F27;"></div></div><div class="anomaly-val">58%</div><div class="anomaly-flag amber">Warning</div></div>
+            <div class="anomaly-row"><div class="anomaly-region">Pune</div><div class="anomaly-bar-wrap"><div class="anomaly-bar" style="width:83%;background:#639922;"></div></div><div class="anomaly-val">83%</div><div class="anomaly-flag ok">Good</div></div>
+            <div class="anomaly-row"><div class="anomaly-region">Mumbai</div><div class="anomaly-bar-wrap"><div class="anomaly-bar" style="width:91%;background:#1D9E75;"></div></div><div class="anomaly-val">91%</div><div class="anomaly-flag ok">Good</div></div>
+            <div class="anomaly-row"><div class="anomaly-region">Nagpur</div><div class="anomaly-bar-wrap"><div class="anomaly-bar" style="width:70%;background:#EF9F27;"></div></div><div class="anomaly-val">70%</div><div class="anomaly-flag amber">Warning</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">AI-generated insights</div>
+          <div class="insight-card">
+            <div class="insight-head"><div class="insight-icon warn">⚠</div><div class="insight-title">Nashik anomaly — stock-out likely within 72 hours</div></div>
+            <div class="insight-body">Iron premix consumption rate increased 340% in Week 11 while stock replenishment records show no incoming order. Based on current depletion rate, Nashik district will reach zero inventory by March 17. Recommended action: emergency procurement request to approved supplier (Ref: Supplier-ID 04) by March 15.</div>
+          </div>
+          <div class="insight-card">
+            <div class="insight-head"><div class="insight-icon warn">↘</div><div class="insight-title">Aurangabad compliance decline — structural pattern detected</div></div>
+            <div class="insight-body">Compliance rate dropped from 74% → 58% over 6 consecutive weeks. Pattern correlates with the departure of District Food Safety Officer. This is not a seasonal pattern — similar dips occurred in 2023 when officer turnover happened in Jalgaon. Recommend assigning interim officer and conducting SOP refresher training.</div>
+          </div>
+          <div class="insight-card">
+            <div class="insight-head"><div class="insight-icon ok">✓</div><div class="insight-title">Pune outperforming — replicable practices identified</div></div>
+            <div class="insight-body">Pune shows consistent 80%+ compliance over 12 weeks. Records indicate bi-weekly internal audits and digital batch-tracking adoption. This model can be extracted as a template SOP for underperforming districts.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MANUALS -->
+      <div class="page" id="page-manuals">
+        <div class="grid2" style="margin-bottom:16px;">
+          <div>
+            <div class="card" style="margin-bottom:12px;">
+              <div class="card-title">Generate manual</div>
+              <div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px;">Output type</div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                  <button class="report-chip sel" onclick="this.classList.toggle('sel')">Step-by-step SOP</button>
+                  <button class="report-chip" onclick="this.classList.toggle('sel')">Beginner guide</button>
+                  <button class="report-chip" onclick="this.classList.toggle('sel')">Field officer checklist</button>
+                  <button class="report-chip" onclick="this.classList.toggle('sel')">Training slides outline</button>
+                </div>
+              </div>
+              <button class="btn btn-primary" style="margin-top:8px;">Generate manual</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Sample output — Premix Handling SOP</div>
+            <div class="card-sub">Auto-generated · Beginner-friendly · 6 steps</div>
+            <div class="sop-step"><div class="sop-num">1</div><div><div class="sop-title">Verify premix delivery</div><div class="sop-detail">Check the delivery bill against Purchase Order. Ensure batch number, FSSAI approval code, and expiry date are printed on packaging.</div></div></div>
+            <div class="sop-step"><div class="sop-num">2</div><div><div class="sop-title">Store at correct conditions</div><div class="sop-detail">Store premix in a dry, cool room (&lt;30°C). Keep bags off the floor on pallets. Label storage date on each bag using the provided stickers.</div></div></div>
+            <div class="sop-step"><div class="sop-num">3</div><div><div class="sop-title">Log batch in register</div><div class="sop-detail">Enter batch ID, quantity (kg), supplier name, and receipt date in the Batch Register (Form FF-03). Keep a digital copy on the field app.</div></div></div>
+            <div class="sop-step"><div class="sop-num">4</div><div><div class="sop-title">Mix at correct ratio</div><div class="sop-detail">Add 1 kg premix per 100 kg of wheat flour. Use the calibrated weigh scale only. Never estimate by volume.</div></div></div>
+            <div class="sop-step"><div class="sop-num">5</div><div><div class="sop-title">Sample for lab testing</div><div class="sop-detail">Collect 250g sample per batch. Label with date, mill code, and batch ID. Submit to district lab within 48 hours of production.</div></div></div>
+            <div class="sop-step"><div class="sop-num">6</div><div><div class="sop-title">Report non-conformance</div><div class="sop-detail">If lab result fails, isolate the batch immediately. Notify District Food Safety Officer within 24 hours using Form FF-05.</div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REPORTING -->
+      <div class="page" id="page-reporting">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">Configure report</div>
+            <div class="report-section">
+              <div class="report-label">Report type</div>
+              <button class="report-chip sel" onclick="selectOne(this,'type')">Stakeholder update</button>
+              <button class="report-chip" onclick="selectOne(this,'type')">Donor report</button>
+              <button class="report-chip" onclick="selectOne(this,'type')">Internal summary</button>
+              <button class="report-chip" onclick="selectOne(this,'type')">Field briefing</button>
+            </div>
+            <div class="report-section">
+              <div class="report-label">Data sources</div>
+              <button class="report-chip sel" onclick="this.classList.toggle('sel')">Policy 2025 doc</button>
+              <button class="report-chip sel" onclick="this.classList.toggle('sel')">Q1 Maharashtra CSV</button>
+              <button class="report-chip" onclick="this.classList.toggle('sel')">UP audit CSV</button>
+              <button class="report-chip" onclick="this.classList.toggle('sel')">Premix SOP</button>
+            </div>
+            <div class="report-section">
+              <div class="report-label">Tone</div>
+              <button class="report-chip sel" onclick="selectOne(this,'tone')">Formal</button>
+              <button class="report-chip" onclick="selectOne(this,'tone')">Concise</button>
+              <button class="report-chip" onclick="selectOne(this,'tone')">Technical</button>
+            </div>
+            <div class="report-section">
+              <div class="report-label">Add custom context</div>
+              <textarea placeholder="e.g. Include progress on iron fortification targets, highlight Nashik supply issue…" style="min-height:60px;"></textarea>
+            </div>
+            <button class="btn btn-primary">Generate report</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Preview — Stakeholder update</div>
+            <div class="card-sub">AI-generated · Maharashtra region · Q1 2025</div>
+            <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.8;">
+              <strong style="font-size:13px;color:var(--color-text-primary);">Q1 2025 Maharashtra Food Fortification — Progress Update</strong><br><br>
+              <strong>Coverage:</strong> 14 of 36 districts actively monitored. Average fortification compliance stands at 78%, a 4-point decline from Q4 2024, driven primarily by supply chain disruptions in Nashik and officer turnover in Aurangabad.<br><br>
+              <strong>Critical issue:</strong> Nashik district is at risk of a premix stock-out within 72 hours. Emergency procurement is recommended immediately. This district represents 12% of Maharashtra's total wheat flour fortification volume.<br><br>
+              <strong>Progress highlight:</strong> Pune district achieved 83% compliance consistently over 12 weeks, representing a scalable model for other districts.<br><br>
+              <strong>Upcoming milestones:</strong> Q2 compliance audit due Apr 15, ISO lab certification for 3 districts due Jun 30, and updated SOP rollout planned by Apr 30.
+            </div>
+            <div style="margin-top:14px;display:flex;gap:8px;">
+              <button class="btn">Copy text</button>
+              <button class="btn btn-primary">Expand with AI</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEARCH -->
+      <div class="page" id="page-search">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Semantic search across all documents</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="search-input" placeholder="e.g. What are the testing requirements for premix batches?" style="flex:1;">
+            <button class="btn btn-primary">Search</button>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="report-chip" onclick="document.getElementById('search-input').value='premix testing requirements'">premix testing requirements</button>
+            <button class="report-chip" onclick="document.getElementById('search-input').value='non-compliance consequences'">non-compliance consequences</button>
+            <button class="report-chip" onclick="document.getElementById('search-input').value='stock-out prevention protocol'">stock-out prevention protocol</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Top results — "premix testing requirements"</div>
+          <div class="insight-card">
+            <div class="insight-head">
+              <div class="doc-icon pdf" style="width:24px;height:24px;font-size:10px;flex-shrink:0;">PDF</div>
+              <div><div style="font-size:12px;font-weight:500;color:var(--color-text-primary);">National Food Fortification Policy 2025 — Section 4.2</div><div style="font-size:10px;color:var(--color-text-tertiary);">Similarity score: 0.94 · Page 18</div></div>
+            </div>
+            <div class="insight-body">"All premix batches must undergo micronutrient potency testing using AOAC methods at an ISO/IEC 17025 accredited laboratory before use. Batch release certificates must be retained for 3 years."</div>
+          </div>
+          <div class="insight-card">
+            <div class="insight-head">
+              <div class="doc-icon docx" style="width:24px;height:24px;font-size:9px;flex-shrink:0;">DOC</div>
+              <div><div style="font-size:12px;font-weight:500;color:var(--color-text-primary);">Premix Supplier SOP v3 — Section 2.1</div><div style="font-size:10px;color:var(--color-text-tertiary);">Similarity score: 0.87 · Page 4</div></div>
+            </div>
+            <div class="insight-body">"Samples of 250g must be collected from every production batch. Submit to district lab within 48 hours. Batch must remain quarantined until certificate received."</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+  const pages = { dashboard:'page-dashboard', documents:'page-documents', monitoring:'page-monitoring', manuals:'page-manuals', reporting:'page-reporting', search:'page-search' };
+  const titles = {
+    dashboard: ['Overview','March 2025 — Maharashtra & UP Regions'],
+    documents: ['Document Intelligence','47 documents processed · 3 pending'],
+    monitoring: ['Monitoring Analytics','Q1 2025 · Maharashtra CSV · 3,210 rows'],
+    manuals: ['Manual Generator','Convert workflows into SOPs and guides'],
+    reporting: ['Reporting Assistant','AI-powered stakeholder & donor reports'],
+    search: ['Semantic Search','RAG-powered search across all uploaded documents']
+  };
+
+  function nav(page, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(pages[page]).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+    document.getElementById('page-title').textContent = titles[page][0];
+    document.getElementById('page-sub').textContent = titles[page][1];
+  }
+
+  function switchTab(btn, tabId) {
+    btn.closest('.tab-row').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    ['tab-analysis','tab-checklist','tab-raw'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.style.display = id === tabId ? 'block' : 'none';
+    });
+  }
+
+  function toggleCheck(box) {
+    box.classList.toggle('done');
+    const txt = box.nextElementSibling;
+    txt.classList.toggle('done');
+    box.textContent = box.classList.contains('done') ? '✓' : '';
+  }
+
+  function selectOne(btn, group) {
+    btn.closest('.report-section').querySelectorAll('.report-chip').forEach(c => c.classList.remove('sel'));
+    btn.classList.add('sel');
+  }
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const labelColor = isDark ? '#888' : '#999';
+
+  new Chart(document.getElementById('compChart'), {
+    type: 'bar',
+    data: {
+      labels: ['MH','UP','MP','RJ','GJ','KA'],
+      datasets: [{ label: 'Compliance %', data: [78,65,94,71,82,88], backgroundColor: ['#EF9F27','#E24B4A','#1D9E75','#EF9F27','#639922','#1D9E75'], borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: labelColor, font: { size: 11 } } },
+        y: { min: 0, max: 100, grid: { color: gridColor }, ticks: { color: labelColor, font: { size: 11 }, callback: v => v + '%' } }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels: ['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'],
+      datasets: [{ label: 'Compliance', data: [81,80,79,82,80,77,76,75,78,76,74,78], borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.08)', tension: 0.3, fill: true, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#1D9E75' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: labelColor, font: { size: 11 } } },
+        y: { min: 60, max: 100, grid: { color: gridColor }, ticks: { color: labelColor, font: { size: 11 }, callback: v => v + '%' } }
+      }
+    }
+  });
+</script>
+</body>
+</html>
