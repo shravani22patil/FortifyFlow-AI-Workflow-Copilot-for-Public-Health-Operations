@@ -379,7 +379,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 <div align="center">
 
-Built by [Shravani Patil](https://linkedin.com/in/shravanipatil) · [GitHub](https://github.com/shravani22patil)
+Built by [Shravani Patil](https://linkedin.com/in/shravanipatil ) · [GitHub](https://github.com/shravani22patil)
 
 *FortifyFlow is an open-source project. Not affiliated with Fortify Health.*
 
